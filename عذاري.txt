@@ -1,0 +1,368 @@
+import SwiftUI
+
+// MARK: - البيانات والنماذج
+struct StageData: Identifiable {
+    let id = UUID()
+    let number: Int
+    let titleAR, explanationAR, deepDetailAR, questionAR: String
+    let optionsAR: [String]
+    let correct: Int
+}
+
+struct HomeworkData: Identifiable {
+    let id = UUID()
+    let titleAR, questionAR: String
+    let optionsAR: [String]
+    let correct: Int
+}
+
+struct FoundationData: Identifiable {
+    let id = UUID()
+    let titleAR, ruleAR, detailsAR: String
+}
+
+struct TaskItem: Identifiable {
+    let id = UUID()
+    var title: String
+    var isDone = false
+}
+
+struct ContentView: View {
+    @State private var isAuth = false
+    @State private var tab = 0
+    @State private var name = ""
+    @State private var school = ""
+    @State private var goal = ""
+    @State private var bio = ""
+    
+    // أزرار التحكم الجديدة (اللغة والثيم)
+    @State private var isEnglish = false
+    @State private var isDark = true
+    
+    @State private var score = 0
+    @State private var stars = 0
+    @State private var medals = 0
+    @State private var highScore = 0
+    @State private var gameScore = 0
+    @State private var currentQIdx = 0
+    @State private var showGameRules = true
+    
+    @State private var tasks: [TaskItem] = []
+    @State private var newTaskTitle = ""
+    @State private var notif = true
+    @State private var autoSave = true
+    
+    @State private var activeStageExplanation: StageData? = nil
+    @State private var activeStageQuiz: StageData? = nil
+    @State private var activeHw: HomeworkData? = nil
+
+    let challengeQuestions = [
+        ("5 × 6 - 10 = ؟", ["20", "25", "30"], 0),
+        ("جذر (64) + 2 = ؟", ["8", "10", "12"], 1),
+        ("15% من 100 = ؟", ["10", "15", "20"], 1),
+        ("3س = 21 ، إذن س = ؟", ["7", "6", "8"], 0),
+        ("2³ + 4 = ؟", ["10", "12", "14"], 1)
+    ]
+
+    let stages: [StageData] = [
+        StageData(number: 1, titleAR: "المرحلة 1: أساسيات الأعداد والعمليات", explanationAR: "ترتيب العمليات الحسابية (PEMDAS).", deepDetailAR: "📖 الشرح العميق:\n1. الأقواس أولاً.\n2. الأسس والجذور.\n3. الضرب والقسمة من اليمين لليسار.\n4. الجمع والطرح أخيرًا.", questionAR: "ما ناتج: 12 - 4 × 2 ؟", optionsAR: ["16", "4", "8", "20"], correct: 1),
+        StageData(number: 2, titleAR: "المرحلة 2: العبارات الجبرية والدوال", explanationAR: "التعويض المباشر لإيجاد قيمة الدالة د(س).", deepDetailAR: "📖 الشرح العميق:\nالدالة علاقة تربط كل مدخل بمخرج واحد. نعوض عن س بالقيم المعطاة بداخل قاعدة الدالة مباشرة.", questionAR: "إذا د(س) = 2س - 3، فما قيمة د(5)؟", optionsAR: ["7", "10", "13", "5"], correct: 0),
+        StageData(number: 3, titleAR: "المرحلة 3: المعادلات الخطية", explanationAR: "عزل المجهول (س) ونقل الأعداد بعكس الإشارة.", deepDetailAR: "📖 الشرح العميق:\nلحصل المعادلة، نجمع أو نطرح الثوابت من الطرفين، ثم نقسم على معامل س لعزلها بالكامل.", questionAR: "أوجدي قيمة س في: 4س + 2 = 18", optionsAR: ["2", "4", "5", "8"], correct: 1),
+        StageData(number: 4, titleAR: "المرحلة 4: التناسب والنسبة المئوية", explanationAR: "حساب الجزء والكل والتخفيضات.", deepDetailAR: "📖 الشرح العميق:\nقانون النسبة المئوية: الجزء = (النسبة ÷ 100) × الكل. لمعرفة مقدار الخصم نضرب النسبة في السعر الأصلي.", questionAR: "خصم 25% من منتج بـ 200 ريال، كم الخصم؟", optionsAR: ["25", "50", "75", "100"], correct: 1),
+        StageData(number: 5, titleAR: "المرحلة 5: الهندسة والقياس", explanationAR: "قوانين المساحة والمحيط للأشكال الهندسية.", deepDetailAR: "📖 الشرح العميق:\nمساحة المستطيل = الطول × العرض. مساحة المثلث = ½ × القاعدة × الارتفاع.", questionAR: "مستطيل طوله 8 وعرضه 5، ما مساحته؟", optionsAR: ["13 سم²", "26 سم²", "40 سم²", "80 سم²"], correct: 2),
+        StageData(number: 6, titleAR: "المرحلة 6: الإحصاء والاحتمالات", explanationAR: "المتوسط الحسابي، الوسيط، والمنوال.", deepDetailAR: "📖 الشرح العميق:\nالمتوسط = مجموع القيم ÷ عددها. الوسيط هو القيمة الوسطى بعد ترتيب القيم تصاعدياً أو تنازلياً.", questionAR: "أوجدي الوسيط للقيم: 3, 7, 9, 12, 15", optionsAR: ["7", "9", "10", "12"], correct: 1),
+        StageData(number: 7, titleAR: "المرحلة 7: ميل المستقيم الخطي", explanationAR: "حساب التغير الراسي على التغير الأفقي.", deepDetailAR: "📖 الشرح العميق:\nقانون الميل م = (ص₂ - ص₁) ÷ (س₂ - س₁). يحدد اتجاه ودرجة انحدار المستقيم.", questionAR: "ما ميل المستقيم المار بـ (0,0) و (2,6)؟", optionsAR: ["2", "3", "6", "1/3"], correct: 1),
+        StageData(number: 8, titleAR: "المرحلة 8: أنظمة المعادلات الخطية", explanationAR: "حل نظام معادلتين بالحذف أو التعويض.", deepDetailAR: "📖 الشرح العميق:\nنبحث عن قيمة (س, ص) التي تحقق المعادلتين معاً بجمع المعادلتين لإلغاء أحد المجهولين.", questionAR: "إذا س + ص = 10 و س - ص = 4، فما س؟", optionsAR: ["3", "5", "7", "8"], correct: 2),
+        StageData(number: 9, titleAR: "المرحلة 9: المتباينات الخطية", explanationAR: "علاقات الأكبر والأصغر وقواعد السالب.", deepDetailAR: "📖 الشرح العميق:\nنحل المتباينة مثل المعادلة تماماً، لكن عند الضرب أو القسمة في عدد سالب يجب عكس اتجاه إشارة المتباينة فوراً.", questionAR: "حل المتباينة: 3س + 1 ≤ 16", optionsAR: ["س ≤ 5", "س ≥ 5", "س < 3", "س > 5"], correct: 0),
+        StageData(number: 10, titleAR: "المرحلة 10: كثيرات الحدود وتحليلها", explanationAR: "تحليل المقادير والفرق بين مربعين.", deepDetailAR: "📖 الشرح العميق:\nقانون الفرق بين مربعين: أ² - ب² = (أ - ب)(أ + ب). يسهم في تبسيط المقادير الجبرية المعقدة.", questionAR: "ما تحليل العبارة: س² - 9 ؟", optionsAR: ["(س-3)(س-3)", "(س+3)(س-3)", "(س+9)(س-1)", "غير ذلك"], correct: 1),
+        StageData(number: 11, titleAR: "المرحلة 11: المعادلات التربيعية", explanationAR: "حل معادلات الدرجة الثانية بالقانون العام والتحليل.", deepDetailAR: "📖 الشرح العميق:\nالصورة العامة أ س² + ب س + ج = 0. نحصل على الجذور بإيجاد قيم س التي تجعل المعادلة تساوي صفراً.", questionAR: "ما جذور المعادلة: س² - 25 = 0 ؟", optionsAR: ["5 و -5", "25 و -25", "5 فقط", "0"], correct: 0),
+        StageData(number: 12, titleAR: "المرحلة 12: حساب المثلثات (الزعيم 👑)", explanationAR: "نظرية فيثاغورس والنسب المثلثية.", deepDetailAR: "📖 الشرح العميق:\nفي المثلث القائم الزاوية: (الوتر)² = (ضلع₁)² + (ضلع₂)². نستخدمها لإيجاد أطوال الأضلاع المجهولة.", questionAR: "ضلعا القائمة 6 و 8، ما طول الوتر؟", optionsAR: ["7", "10", "14", "100"], correct: 1)
+    ]
+
+    let foundations = [
+        FoundationData(titleAR: "1. باب الأعداد والعمليات الأربع", ruleAR: "قواعد الإشارات وتدرج الترتيب", detailsAR: "• متشابهة الإشارات (+) ومختلفة (-).\n• الأقواس، الأسس، الضرب والقسمة، الجمع والطرح."),
+        FoundationData(titleAR: "2. باب الجبر والأسس والجذور", ruleAR: "قوانين الأسس والدوال الجبرية", detailsAR: "• في الضرب نجمع الأسس وفي القسمة نطرحها.\n• أي عدد أس صفر يساوي 1."),
+        FoundationData(titleAR: "3. باب الهندسة ونظرية فيثاغورس", ruleAR: "الوتر² = الضلع₁² + الضلع₂²", detailsAR: "• خاصة بالمثلث القائم الزاوية لإيجاد الأضلاع المجهولة."),
+        FoundationData(titleAR: "4. باب الإحصاء والاحتمالات", ruleAR: "المتوسط، الوسيط، والمنوال", detailsAR: "• المتوسط = المجموع ÷ العدد.\n• الوسيط = القيمة الوسطى بعد الترتيب."),
+        FoundationData(titleAR: "5. باب حساب المثلثات والزوايا", ruleAR: "مجموع زوايا المثلث 180°", detailsAR: "• النسب المثلثية الأساسية: الجيب (Sin)، الجيب تمام (Cos)، والظل (Tan)."),
+        FoundationData(titleAR: "6. باب المتباينات والدوال الخطية", ruleAR: "الميل م = التغير الصادي ÷ التغير السيني", detailsAR: "• عند الضرب في عدد سالب نعكس اتجاه إشارة المتباينة.")
+    ]
+
+    let homeworks = [
+        HomeworkData(titleAR: "واجب (1): قواعد الإشارات", questionAR: "ما ناتج: (-8) + (+12) - (-3) ؟", optionsAR: ["7", "1", "13", "4"], correct: 0),
+        HomeworkData(titleAR: "واجب (2): تحليل المقادير", questionAR: "حللي العبارة تحليلاً كاملاً: س² - 16", optionsAR: ["(س-4)(س-4)", "(س-4)(س+4)", "(س-8)(س+2)", "غير ذلك"], correct: 1),
+        HomeworkData(titleAR: "واجب (3): نظرية فيثاغورس", questionAR: "الوتر 10 وأحد الأضلاع 6، فما الضلع الآخر؟", optionsAR: ["8", "4", "5", "16"], correct: 0),
+        HomeworkData(titleAR: "واجب (4): المتوسط الحسابي", questionAR: "ما المتوسط للأعداد: 4, 8, 12, 16 ؟", optionsAR: ["8", "10", "12", "14"], correct: 1),
+        HomeworkData(titleAR: "واجب (5): زوايا المثلث", questionAR: "زاويتان في مثلث 50° و 60°، ما الثالثة؟", optionsAR: ["50°", "70°", "90°", "60°"], correct: 1)
+    ]
+
+    var body: some View {
+        ZStack {
+            // تفاعل اللون الداكن والفاتح
+            (isDark ? Color(red: 0.03, green: 0.05, blue: 0.12) : Color(.systemGroupedBackground)).ignoresSafeArea()
+            
+            if !isAuth {
+                VStack(spacing: 18) {
+                    // أزرار التحكم باللغة واللون بشاشة الدخول أيضاً
+                    HStack {
+                        Button(isEnglish ? "العربية 🇸🇦" : "English 🇺🇸") { isEnglish.toggle() }
+                            .font(.caption).bold().foregroundColor(.yellow)
+                        Spacer()
+                        Button(isDark ? "☀️ فاتح" : "🌙 داكن") { isDark.toggle() }
+                            .font(.caption).bold().foregroundColor(.yellow)
+                    }.padding(.horizontal, 30)
+                    
+                    Image(systemName: "graduationcap.fill").font(.system(size: 60)).foregroundColor(.yellow)
+                    Text(isEnglish ? "MASARUK PLATFORM 🚀" : "منصة مَسَارُك التعليمية 🚀").font(.title2).bold().foregroundColor(isDark ? .white : .black)
+                    
+                    VStack(spacing: 10) {
+                        TextField(isEnglish ? "Student Full Name..." : "اسم الطالبة الثلاثي...", text: $name).textFieldStyle(.roundedBorder)
+                        TextField(isEnglish ? "School Name..." : "اسم المدرسة...", text: $school).textFieldStyle(.roundedBorder)
+                    }.padding(.horizontal, 30)
+                    
+                    Button(action: { if !name.isEmpty { isAuth = true } }) {
+                        Text(isEnglish ? "Login & Start 🚀" : "دخول للرحلة 🚀")
+                            .font(.headline).foregroundColor(.black).padding(12)
+                            .frame(maxWidth: .infinity).background(Color.yellow).cornerRadius(10)
+                    }.padding(.horizontal, 30)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(isEnglish ? "Masaruk" : "منصة مسارك").font(.caption2).bold().foregroundColor(.yellow)
+                            Text(name).font(.caption).bold().foregroundColor(isDark ? .white : .black)
+                        }
+                        Spacer()
+                        // زر تغيير اللغة
+                        Button(isEnglish ? "AR 🇸🇦" : "EN 🇺🇸") { isEnglish.toggle() }
+                            .font(.caption2).bold().foregroundColor(.yellow).padding(.horizontal, 6)
+                        // زر تغيير الثيم (داكن/فاتح)
+                        Button(isDark ? "☀️" : "🌙") { isDark.toggle() }
+                            .font(.caption).foregroundColor(.yellow).padding(.horizontal, 6)
+                        
+                        Button(isEnglish ? "Exit" : "خروج") { isAuth = false }.font(.caption).bold().foregroundColor(.red)
+                    }.padding().background(isDark ? Color.white.opacity(0.1) : Color.white)
+
+                    Spacer()
+
+                    if tab == 0 { tabHomeView }
+                    else if tab == 1 { tabChallengeView }
+                    else if tab == 2 { tabStagesView }
+                    else if tab == 3 { tabHomeworksView }
+                    else if tab == 4 { tabFoundationsView }
+                    else if tab == 5 { tabProfileView }
+
+                    Spacer()
+
+                    HStack {
+                        Button(isEnglish ? "Home" : "الرئيسية 🏠") { tab = 0 }.foregroundColor(tab == 0 ? .yellow : .gray).font(.caption2)
+                        Spacer()
+                        Button(isEnglish ? "Challenge" : "التحدي 🎮") { tab = 1 }.foregroundColor(tab == 1 ? .yellow : .gray).font(.caption2)
+                        Spacer()
+                        Button(isEnglish ? "Stages" : "المراحل") { tab = 2 }.foregroundColor(tab == 2 ? .yellow : .gray).font(.caption2)
+                        Spacer()
+                        Button(isEnglish ? "Homework" : "الواجبات") { tab = 3 }.foregroundColor(tab == 3 ? .yellow : .gray).font(.caption2)
+                        Spacer()
+                        Button(isEnglish ? "Foundations" : "التأسيس") { tab = 4 }.foregroundColor(tab == 4 ? .yellow : .gray).font(.caption2)
+                        Spacer()
+                        Button(isEnglish ? "Profile" : "الملف") { tab = 5 }.foregroundColor(tab == 5 ? .yellow : .gray).font(.caption2)
+                    }.padding().background(isDark ? Color.white.opacity(0.1) : Color.white)
+                }
+            }
+        }
+        .sheet(item: $activeStageExplanation) { stg in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 15) {
+                    Text(stg.titleAR).font(.headline).bold().foregroundColor(.yellow).padding(.top)
+                    Text(stg.deepDetailAR).font(.body).foregroundColor(isDark ? .white : .black).lineSpacing(6)
+                    Button(isEnglish ? "Close" : "إغلاق الشرح ✖️") { activeStageExplanation = nil }
+                        .font(.headline).foregroundColor(.black).padding()
+                        .frame(maxWidth: .infinity).background(Color.yellow).cornerRadius(10).padding(.top, 20)
+                }.padding(20)
+            }
+        }
+        .sheet(item: $activeStageQuiz) { stg in
+            VStack(spacing: 20) {
+                Text(isEnglish ? "Quiz: \(stg.titleAR)" : "اختبار: \(stg.titleAR)").font(.headline).bold().foregroundColor(isDark ? .white : .black).padding(.top)
+                Text(stg.questionAR).font(.title3).bold().foregroundColor(isDark ? .white : .black).multilineTextAlignment(.center).padding()
+                
+                ForEach(0..<stg.optionsAR.count, id: \.self) { i in
+                    Button(action: {
+                        if i == stg.correct { score += 50; stars += 1 }
+                        activeStageQuiz = nil
+                    }) {
+                        Text(stg.optionsAR[i])
+                            .font(.headline).foregroundColor(.white).padding()
+                            .frame(maxWidth: .infinity).background(Color.blue).cornerRadius(10)
+                    }.padding(.horizontal)
+                }
+                Spacer()
+            }
+        }
+        .sheet(item: $activeHw) { hw in
+            VStack(spacing: 20) {
+                Text(hw.titleAR).font(.headline).bold().foregroundColor(.green).padding(.top)
+                Text(hw.questionAR).font(.title3).bold().foregroundColor(isDark ? .white : .black).multilineTextAlignment(.center).padding()
+                
+                ForEach(0..<hw.optionsAR.count, id: \.self) { i in
+                    Button(action: {
+                        if i == hw.correct { score += 75; medals += 1 }
+                        activeHw = nil
+                    }) {
+                        Text(hw.optionsAR[i])
+                            .font(.headline).foregroundColor(.white).padding()
+                            .frame(maxWidth: .infinity).background(Color.purple).cornerRadius(10)
+                    }.padding(.horizontal)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - الأجزاء المصغرة
+    var tabHomeView: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                VStack(spacing: 6) {
+                    Image(systemName: "star.circle.fill").font(.system(size: 50)).foregroundColor(.yellow)
+                    Text(isEnglish ? "Welcome to Masaruk Platform 🌟" : "أهلاً بكِ في منصة مسارك التعليمية 🌟").font(.title3).bold().foregroundColor(isDark ? .white : .black)
+                    Text(isEnglish ? "Your smart gateway to mastering mathematics." : "بوابتك الذكية والمبسطة لإتقان الرياضيات بكل ثقة واحترافية.").font(.caption).foregroundColor(isDark ? .white.opacity(0.8) : .secondary).multilineTextAlignment(.center).padding(.horizontal)
+                }.padding(.top, 5)
+                
+                HStack(spacing: 12) {
+                    VStack { Text("\(score)").font(.title2).bold().foregroundColor(.green); Text(isEnglish ? "Points ⭐" : "النقاط ⭐").font(.caption2).foregroundColor(.gray) }.frame(maxWidth: .infinity).padding(8).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(8)
+                    VStack { Text("\(stars)").font(.title2).bold().foregroundColor(.yellow); Text(isEnglish ? "Stars 🌟" : "النجوم 🌟").font(.caption2).foregroundColor(.gray) }.frame(maxWidth: .infinity).padding(8).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(8)
+                    VStack { Text("\(medals)").font(.title2).bold().foregroundColor(.cyan); Text(isEnglish ? "Medals 🏅" : "الميداليات 🏅").font(.caption2).foregroundColor(.gray) }.frame(maxWidth: .infinity).padding(8).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(8)
+                }.padding(.horizontal)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isEnglish ? "📱 About Masaruk:" : "📱 ما هي منصة مسارك؟").font(.subheadline).bold().foregroundColor(.yellow)
+                    Text(isEnglish ? "An integrated educational app designed to help you understand math step by step with deep explanations, 12 stages, and foundations." : "هو تطبيق تعليمي متكامل صُمم خصيصاً ليساعدك في فهم قواعد الرياضيات خطوة بخطوة. يحتوي التطبيق على شروحات عميقة ومفصلة لـ 12 مرحلة أساسية، إضافة إلى حقيبة تأسيس شاملة بـ 6 أبواب كبرى، وتحديات تفاعلية، وقائمة واجبات لتقييم مستواكِ الدراسي بكل سهولة.").font(.caption2).foregroundColor(isDark ? .white.opacity(0.9) : .secondary).lineSpacing(4)
+                }.padding(12).background(isDark ? Color.white.opacity(0.06) : Color.white).cornerRadius(10).padding(.horizontal)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isEnglish ? "💡 Math Tips:" : "💡 نصائح ذهبية لتفوقك في الرياضيات:").font(.subheadline).bold().foregroundColor(.yellow)
+                    Text(isEnglish ? "1. Understand, don't memorize.\n2. Break down complex problems.\n3. Practice regularly." : "1. الفهم لا الحفظ: الرياضيات تُبنى على الاستنتاج وتسلسل الأفكار وليس حفظ الأرقام.\n2. التدرج في الحل: قسّمي المسألة المعقدة إلى خطوات صغيرة وبسيطة.\n3. كثرة التدريب: حل التمارين المتنوعة يثبت المعلومة في ذهنك للأبد.\n4. استغلال التأسيس: العودة للقواعد الأساسية تحل لك نصف المسائل الصعبة.").font(.caption2).foregroundColor(isDark ? .white.opacity(0.9) : .secondary).lineSpacing(4)
+                }.padding(12).background(isDark ? Color.white.opacity(0.06) : Color.white).cornerRadius(10).padding(.horizontal)
+            }.padding(.vertical)
+        }
+    }
+
+    var tabChallengeView: some View {
+        ScrollView {
+            VStack(spacing: 15) {
+                Text(isEnglish ? "Math Challenge Game 🎮" : "لعبة تحدي الرياضيات 🎮").font(.headline).bold().foregroundColor(isDark ? .white : .black).padding(.top)
+                Button(showGameRules ? (isEnglish ? "Hide Rules 📜" : "إخفاء شرح النظام 📜") : (isEnglish ? "Show Rules 📜" : "عرض طريقة اللعبة 📜")) { showGameRules.toggle() }.font(.caption).bold().foregroundColor(.cyan)
+                
+                if showGameRules {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isEnglish ? "📜 Game Rules:" : "📜 طريقة اللعبة:").font(.subheadline).bold().foregroundColor(.yellow)
+                        Text(isEnglish ? "• Tap the correct answer.\n• +10 points for each correct answer." : "• اضغطي على الإجابة الصحيحة بكبسة واحدة.\n• كل إجابة صحيحة تمنحك +10 نقاط وترفع رصيدك الفوري.").font(.caption2).foregroundColor(isDark ? .white.opacity(0.9) : .secondary)
+                    }.padding(10).background(isDark ? Color.white.opacity(0.06) : Color.white).cornerRadius(10).padding(.horizontal)
+                }
+                
+                VStack(spacing: 15) {
+                    Text(isEnglish ? "Score: \(gameScore) 🎯" : "النقاط: \(gameScore) 🎯").font(.headline).bold().foregroundColor(.green)
+                    let q = challengeQuestions[currentQIdx]
+                    Text(q.0).font(.title2).bold().foregroundColor(isDark ? .white : .black)
+                    
+                    ForEach(0..<q.1.count, id: \.self) { idx in
+                        Button(action: {
+                            if idx == q.2 { gameScore += 10; score += 10 }
+                            currentQIdx = (currentQIdx + 1) % challengeQuestions.count
+                        }) {
+                            Text(q.1[idx]).font(.headline).foregroundColor(.white).padding(12).frame(maxWidth: .infinity).background(Color.blue).cornerRadius(8)
+                        }.padding(.horizontal)
+                    }
+                }.padding()
+            }
+        }
+    }
+
+    var tabStagesView: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Text(isEnglish ? "Stages Map 🗺️" : "خريطة المراحل الـ 12 الكاملة 🗺️").font(.headline).bold().foregroundColor(isDark ? .white : .black)
+                ForEach(stages) { stg in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(stg.titleAR).font(.subheadline).bold().foregroundColor(.yellow)
+                        Text(stg.explanationAR).font(.caption2).foregroundColor(isDark ? .white.opacity(0.8) : .secondary)
+                        HStack(spacing: 10) {
+                            Button(action: { activeStageExplanation = stg }) { Text(isEnglish ? "Lesson 📚" : "شرح الدرس 📚").font(.caption).bold().padding(8).frame(maxWidth: .infinity).background(Color.cyan).foregroundColor(.black).cornerRadius(6) }
+                            Button(action: { activeStageQuiz = stg }) { Text(isEnglish ? "Quiz ✍️" : "اختبار المرحلة ✍️").font(.caption).bold().padding(8).frame(maxWidth: .infinity).background(Color.yellow).foregroundColor(.black).cornerRadius(6) }
+                        }
+                    }.padding(12).background(isDark ? Color.white.opacity(0.08) : Color.white).cornerRadius(10)
+                }
+            }.padding(.horizontal)
+        }
+    }
+
+    var tabHomeworksView: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Text(isEnglish ? "Homeworks 📝" : "قائمة الواجبات المدرسية 📝").font(.headline).bold().foregroundColor(isDark ? .white : .black)
+                ForEach(homeworks) { hw in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(hw.titleAR).font(.subheadline).bold().foregroundColor(.yellow)
+                        Button(action: { activeHw = hw }) { Text(isEnglish ? "Solve 🚀" : "حل الواجب 🚀").font(.caption).bold().padding(8).frame(maxWidth: .infinity).background(Color.green).foregroundColor(.white).cornerRadius(6) }
+                    }.padding(10).background(isDark ? Color.white.opacity(0.08) : Color.white).cornerRadius(10)
+                }
+            }.padding(.horizontal)
+        }
+    }
+
+    var tabFoundationsView: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Text(isEnglish ? "Foundations 📐" : "حقيبة التأسيس الرياضي (6 أبواب) 📐").font(.headline).bold().foregroundColor(isDark ? .white : .black)
+                ForEach(foundations) { fnd in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(fnd.titleAR).font(.subheadline).bold().foregroundColor(.yellow)
+                        Text(fnd.ruleAR).font(.caption).bold().foregroundColor(.cyan)
+                        Text(fnd.detailsAR).font(.caption2).foregroundColor(isDark ? .white.opacity(0.9) : .secondary)
+                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(isDark ? Color.white.opacity(0.08) : Color.white).cornerRadius(10)
+                }
+            }.padding(.horizontal)
+        }
+    }
+
+    var tabProfileView: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Image(systemName: "crown.fill").font(.system(size: 40)).foregroundColor(.yellow)
+                Text(name).font(.headline).bold().foregroundColor(isDark ? .white : .black)
+                Text(school).font(.caption).foregroundColor(.yellow)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isEnglish ? "🎯 Study Goal:" : "🎯 الهدف الدراسي:").font(.caption2).foregroundColor(.gray)
+                    TextField(isEnglish ? "Type your goal..." : "اكتبي هدفك الدراسي هنا...", text: $goal).font(.caption).textFieldStyle(.roundedBorder)
+                    Text(isEnglish ? "✍️ Bio:" : "✍️ النبذة الشخصية (Bio):").font(.caption2).foregroundColor(.gray)
+                    TextField(isEnglish ? "Type your bio..." : "اكتبي نبذة عنكِ...", text: $bio).font(.caption).textFieldStyle(.roundedBorder)
+                }.padding(8).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(8)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isEnglish ? "📋 Task List:" : "📋 جدول المهام والتذكيرات:").font(.subheadline).bold().foregroundColor(.yellow)
+                    HStack {
+                        TextField(isEnglish ? "New task..." : "مهمة دراسية جديدة...", text: $newTaskTitle).font(.caption).textFieldStyle(.roundedBorder)
+                        Button(isEnglish ? "Add" : "إضافة") { if !newTaskTitle.isEmpty { tasks.append(TaskItem(title: newTaskTitle)); newTaskTitle = "" } }.font(.caption).bold().padding(6).background(Color.yellow).foregroundColor(.black).cornerRadius(6)
+                    }
+                    ForEach(0..<tasks.count, id: \.self) { idx in
+                        HStack {
+                            Button(action: { tasks[idx].isDone.toggle() }) { Image(systemName: tasks[idx].isDone ? "checkmark.circle.fill" : "circle").foregroundColor(.yellow) }
+                            Text(tasks[idx].title).font(.caption).strikethrough(tasks[idx].isDone).foregroundColor(tasks[idx].isDone ? .gray : (isDark ? .white : .black))
+                            Spacer()
+                        }
+                    }
+                }.padding(10).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(10)
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(isEnglish ? "⚙️ Settings:" : "⚙️ إعدادات الملف الشخصي:").font(.subheadline).bold().foregroundColor(.yellow)
+                    Toggle(isEnglish ? "Notifications" : "تفعيل التنبيهات", isOn: $notif).font(.caption).foregroundColor(isDark ? .white : .black)
+                    Toggle(isEnglish ? "Auto-Save" : "الحفظ التلقائي", isOn: $autoSave).font(.caption).foregroundColor(isDark ? .white : .black)
+                    Button(isEnglish ? "Reset Score" : "إعادة ضبط أعلى سكور") { highScore = 0; gameScore = 0 }.font(.caption).foregroundColor(.red)
+                }.padding(10).background(isDark ? Color.white.opacity(0.05) : Color.white).cornerRadius(10)
+            }.padding(.horizontal)
+        }
+    }
+}
